@@ -1,0 +1,6 @@
+data/
+powerbi/data/
+__pycache__/
+*.pyc
+.venv/
+~$*.xlsx

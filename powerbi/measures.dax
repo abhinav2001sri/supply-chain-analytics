@@ -1,0 +1,96 @@
+-- Paste each measure into Power BI Desktop (Modeling > New measure). Create a "_Measures" table to hold them.
+-- Relationships: fact_orders[order_date] -> dim_date[date] (active);
+-- fact_orders[promised_date] and fact_orders[actual_ship_date] -> dim_date[date] (inactive).
+-- Also: fact_orders[customer_id] -> dim_customer, [product_id] -> dim_product, [warehouse] -> dim_warehouse (all many-to-one).
+
+-- ===== Demand =====
+Total Orders =
+CALCULATE ( COUNTROWS ( fact_orders ), fact_orders[status] <> "Cancelled" )
+
+Booked Value =
+CALCULATE ( SUM ( fact_orders[order_value] ), fact_orders[status] <> "Cancelled" )
+
+Booked Qty =
+CALCULATE ( SUM ( fact_orders[qty_ordered] ), fact_orders[status] <> "Cancelled" )
+
+Booked Value MoM % =
+VAR Prev = CALCULATE ( [Booked Value], DATEADD ( dim_date[date], -1, MONTH ) )
+RETURN DIVIDE ( [Booked Value] - Prev, Prev )
+
+Booked Value YoY % =
+VAR Prev = CALCULATE ( [Booked Value], SAMEPERIODLASTYEAR ( dim_date[date] ) )
+RETURN DIVIDE ( [Booked Value] - Prev, Prev )
+
+Booked Value 3M Avg =
+DIVIDE (
+    CALCULATE ( [Booked Value], DATESINPERIOD ( dim_date[date], MAX ( dim_date[date] ), -3, MONTH ) ),
+    3
+)
+
+Cancellation Rate % =
+DIVIDE (
+    CALCULATE ( COUNTROWS ( fact_orders ), fact_orders[status] = "Cancelled" ),
+    COUNTROWS ( fact_orders )
+)
+
+-- ===== Service levels (use with dim_date on the promised date via the measures marked below) =====
+Due Orders =
+CALCULATE ( COUNTROWS ( fact_orders ), fact_orders[is_due] = 1 )
+
+On-Time Orders =
+CALCULATE ( COUNTROWS ( fact_orders ), fact_orders[is_on_time] = 1 )
+
+Late Orders = [Due Orders] - [On-Time Orders]
+
+OTD % = DIVIDE ( [On-Time Orders], [Due Orders] )
+
+OTIF % =
+DIVIDE ( CALCULATE ( COUNTROWS ( fact_orders ), fact_orders[is_otif] = 1 ), [Due Orders] )
+
+Fill Rate % =
+DIVIDE (
+    CALCULATE ( SUM ( fact_orders[qty_shipped] ), fact_orders[is_due] = 1 ),
+    CALCULATE ( SUM ( fact_orders[qty_ordered] ), fact_orders[is_due] = 1 )
+)
+
+Avg Days Late =
+CALCULATE ( AVERAGE ( fact_orders[days_late] ), fact_orders[days_late] > 0 )
+
+-- Promised-date versions: put dim_date[year_month] on the axis for service-level trends.
+OTD % (by Promised Date) =
+CALCULATE ( [OTD %], USERELATIONSHIP ( fact_orders[promised_date], dim_date[date] ) )
+
+OTIF % (by Promised Date) =
+CALCULATE ( [OTIF %], USERELATIONSHIP ( fact_orders[promised_date], dim_date[date] ) )
+
+OTD Target = 0.90
+
+OTD vs Target (pts) = [OTD %] - [OTD Target]
+
+-- ===== Backlog =====
+-- Backlog is a point-in-time snapshot: use these without a date filter, or slice by region/warehouse/customer.
+Open Orders =
+CALCULATE ( COUNTROWS ( fact_orders ), fact_orders[open_qty] > 0 )
+
+Backlog Value =
+CALCULATE ( SUM ( fact_orders[backlog_value] ), REMOVEFILTERS ( dim_date ) )
+
+Backlog Qty =
+CALCULATE ( SUM ( fact_orders[open_qty] ), REMOVEFILTERS ( dim_date ) )
+
+Overdue Backlog Value =
+CALCULATE ( [Backlog Value], fact_orders[is_overdue_open] = 1 )
+
+Overdue Backlog % = DIVIDE ( [Overdue Backlog Value], [Backlog Value] )
+
+Backlog 90+ Value =
+CALCULATE ( [Backlog Value], fact_orders[backlog_age_bucket] = "90+" )
+
+Avg Backlog Age (days) =
+CALCULATE ( AVERAGE ( fact_orders[backlog_age_days] ), fact_orders[open_qty] > 0, REMOVEFILTERS ( dim_date ) )
+
+High Risk Orders =
+CALCULATE ( COUNTROWS ( fact_orders ), fact_orders[risk_tier] = "High", REMOVEFILTERS ( dim_date ) )
+
+High Risk Value =
+CALCULATE ( [Backlog Value], fact_orders[risk_tier] = "High" )
