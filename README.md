@@ -44,8 +44,8 @@ Individual steps: `generate_data.py`, `clean_data.py`, `load_to_sql.py`, `run_qu
 - Sao Paulo and Shanghai warehouses have the lowest OTD (about 69% and 71%).
 - 485 open orders ($1.03M) are scored high risk; 480 rows were quarantined for data issues.
 
-## AI-assisted workflow
-AI (GitHub Copilot) was used to draft the SQL, Pandas cleaning rules and report code, and to speed up the data generator. Every output was checked:
+## Validation
+Used AI coding tools for drafting and boilerplate; all logic was reviewed and validated:
 - Cleaning rules were confirmed by assertions and the data quality log.
 - SQL results were reconciled against the Pandas KPIs (same OTD, backlog and booking totals).
 - Weekly commentary is generated from the data, not typed by hand, so figures always match the workbook.
@@ -57,6 +57,6 @@ schtasks /Create /SC WEEKLY /D MON /ST 08:00 /TN "SupplyChainWeeklyReport" /TR "
 ```
 
 ## Résumé bullets
-- Built an AI-assisted analytics workflow on a 60k-order customer dataset to monitor demand, backlog, order-booking trends and fulfillment risk.
+- Built an analytics workflow on a 60k-order customer dataset to monitor demand, backlog, order-booking trends and fulfillment risk.
 - Wrote SQL and Python (Pandas) to clean, validate and analyse order data; built Power BI dashboards for demand trends, backlog aging and service-level KPIs (OTD, OTIF, fill rate).
 - Automated weekly Excel reports with an exceptions summary that flags data discrepancies and overdue high-risk orders to support corrective action and stakeholder updates.
